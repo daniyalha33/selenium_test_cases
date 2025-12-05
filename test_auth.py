@@ -8,7 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 
-BASE_URL = "http://localhost:5173/login"  # Updated URL
+BASE_URL = "http://34.239.165.164:8085"  # Updated URL
 
 @pytest.fixture
 def driver():
