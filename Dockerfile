@@ -1,34 +1,44 @@
-# Use official Python image
-FROM python:3.12-slim
+FROM python:3.11-slim
 
-# Install dependencies
-RUN apt-get update && \
-    apt-get install -y wget unzip curl xvfb gnupg libnss3 libxss1 libasound2 fonts-liberation libgtk-3-0 libx11-xcb1 && \
-    rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    unzip \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Chrome
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
-    apt-get update && \
-    apt-get install -y google-chrome-stable
+# Install Google Chrome
+RUN wget -q -O /tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    && apt-get update \
+    && apt-get install -y /tmp/google-chrome.deb \
+    && rm /tmp/google-chrome.deb \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install ChromeDriver
-RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+') && \
-    wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/${CHROME_VERSION}/chromedriver_linux64.zip && \
-    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    rm /tmp/chromedriver.zip
+# Install ChromeDriver using Chrome for Testing
+RUN CHROMEDRIVER_VERSION=$(wget -qO- "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json" | grep -oP '"version":"\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1) \
+    && echo "Installing ChromeDriver version: $CHROMEDRIVER_VERSION" \
+    && wget -q -O /tmp/chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip" \
+    && unzip /tmp/chromedriver.zip -d /tmp/ \
+    && mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver \
+    && chmod +x /usr/local/bin/chromedriver \
+    && rm -rf /tmp/chromedriver.zip /tmp/chromedriver-linux64
+
+# Verify installations
+RUN google-chrome --version && chromedriver --version
 
 # Set working directory
 WORKDIR /tests
 
-# Copy test requirements
+# Copy requirements file
 COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy test code
+# Copy test files
 COPY . .
 
-# Set entrypoint to pytest
-ENTRYPOINT ["pytest", "--headless", "--maxfail=1", "--disable-warnings"]
+# Run tests
+CMD ["pytest", "-v", "--tb=short", "--maxfail=1"]
