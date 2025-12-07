@@ -31,14 +31,14 @@ RUN google-chrome --version && chromedriver --version
 # Set working directory
 WORKDIR /tests
 
-# Copy requirements file
+# Copy only requirements first (for better layer caching)
 COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy test files
-COPY . .
+# Copy ONLY the test files we need (NOT everything with COPY . .)
+COPY conftest.py test_auth.py ./
 
-# Run tests
-CMD ["pytest", "-v", "--tb=short", "--maxfail=1"]
+# Run tests - specify exact test file
+CMD ["pytest", "test_auth.py", "-v", "--tb=short", "--maxfail=1"]
